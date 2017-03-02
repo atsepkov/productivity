@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+# Usage:
+# 	container_edit container filename
+# 	edit file directly within the container
+
+
+container=$1
+filename=$2
+file=$(mktemp)
+created=$(stat -c %Y $file)
+docker exec $container cat $filename > $file
+vim $file
+written=$(stat -c %Y $file)
+if [[ $created -ne $written ]]; then
+        docker exec -i $container bash -c "mv -f $filename $filename.bak"
+        docker cp $file $container:$filename
+
+        # copy permissions
+        OWNER=$(docker exec -i $container bash -c "stat -c '%U' ${filename}.bak")
+        GROUP=$(docker exec -i $container bash -c "stat -c '%G' ${filename}.bak")
+        PERMISSIONS=$(docker exec -i $container bash -c "stat -c '%a' ${filename}.bak")
+        #PERMISSIONS=$(docker exec -i $container bash -c "ls -l ${filename}.bak")
+        #OWNER=$(echo $PERMISSIONS | sed -e "s/.\(...\).*/\1/"       | sed -e "s/[-]//g" )
+        #GROUP=$(echo $PERMISSIONS | sed -e "s/....\(...\).*/\1/"    | sed -e "s/[-]//g" )
+        #OTHER=$(echo $PERMISSIONS | sed -e "s/.......\(...\).*/\1/" | sed -e "s/[-]//g" )
+
+        #docker exec -i $container bash -c "chmod u=${OWNER},g=${GROUP},o=${OTHER} $filename"
+        docker exec -i $container bash -c "dos2unix $filename"
+        docker exec -i $container bash -c "chmod $PERMISSIONS $filename"
+        docker exec -i $container bash -c "chown ${OWNER}:${GROUP} $filename"
+fi

@@ -1,0 +1,22 @@
+# Author: Alexander Tsepkov
+# container_edit parameter-completion
+
+_editContainerComplete ()
+{
+  COMPREPLY=()   # Array variable storing the possible completions.
+  local cur=${COMP_WORDS[COMP_CWORD]}
+  local prev=${COMP_WORDS[COMP_CWORD-1]}
+
+  case $COMP_CWORD in
+    1) COMPREPLY=( $( compgen -W "$(docker ps | awk '{if(NR>1)print $NF}')" -- $cur ) );;
+    2)
+      local files=$(docker exec -i $prev bash -c "compgen -f $cur")
+      COMPREPLY=( $( compgen -W "$files" -- $cur ) )
+      compopt -o nospace
+      ;;
+  esac
+  return 0
+}
+
+complete -F _editContainerComplete -o filenames container_edit cv
+
